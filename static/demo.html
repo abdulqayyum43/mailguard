@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MailGuard — API Playground</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#020817;--surface:#0f172a;--border:#1e293b;--border2:#334155;
+  --text:#f8fafc;--muted:#94a3b8;--accent:#38bdf8;--accent2:#818cf8;
+  --green:#22c55e;--red:#ef4444;--orange:#f97316;--yellow:#eab308;
+}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif;font-size:14px;min-height:100vh;display:flex;flex-direction:column}
+a{color:var(--accent);text-decoration:none}
+nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:54px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.nav-brand{font-size:16px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.nav-links{display:flex;gap:20px;align-items:center}
+.nav-links a{color:var(--muted);font-size:13px;transition:.15s}
+.nav-links a:hover{color:var(--text)}
+.layout{display:flex;flex:1;overflow:hidden;height:calc(100vh - 54px)}
+.sidebar{width:260px;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;flex-shrink:0}
+.sidebar-section{padding:16px 16px 4px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+.endpoint{display:flex;align-items:center;gap:8px;padding:8px 16px;cursor:pointer;transition:.12s;border-radius:0;font-size:13px;color:var(--muted)}
+.endpoint:hover{background:rgba(255,255,255,.04);color:var(--text)}
+.endpoint.active{background:rgba(56,189,248,.08);color:var(--text);border-right:2px solid var(--accent)}
+.method{font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;flex-shrink:0}
+.post{background:rgba(56,189,248,.15);color:#7dd3fc}
+.get{background:rgba(34,197,94,.15);color:#4ade80}
+.delete{background:rgba(239,68,68,.15);color:#f87171}
+.center{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.toolbar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.toolbar input{flex:1;background:#0d1b2a;border:1px solid var(--border2);border-radius:8px;padding:8px 14px;color:var(--text);font-size:13px;outline:none;font-family:monospace}
+.toolbar input:focus{border-color:var(--accent)}
+.key-input{max-width:240px!important}
+.run-btn{background:var(--accent);color:#020817;border:none;border-radius:8px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.run-btn:hover{background:#7dd3fc}
+.run-btn:disabled{opacity:.5;cursor:default}
+.panels{display:flex;flex:1;overflow:hidden}
+.req-panel,.res-panel{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.req-panel{border-right:1px solid var(--border)}
+.panel-header{padding:10px 16px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.panel-header .actions{display:flex;gap:8px}
+textarea{flex:1;background:#0d1b2a;border:none;color:#94a3b8;font-family:monospace;font-size:12.5px;padding:16px;resize:none;outline:none;line-height:1.7;overflow:auto}
+.res-body{flex:1;overflow:auto;padding:16px;font-family:monospace;font-size:12.5px;color:#94a3b8;line-height:1.7;white-space:pre-wrap}
+.status-bar{padding:8px 16px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);display:flex;gap:16px;background:var(--surface);flex-shrink:0}
+.status-bar .ok{color:#4ade80}
+.status-bar .err{color:#f87171}
+
+/* Right panel — parsed results */
+.right-panel{width:320px;border-left:1px solid var(--border);background:var(--surface);overflow-y:auto;flex-shrink:0}
+.result-section{padding:14px 16px;border-bottom:1px solid var(--border)}
+.result-section h3{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px}
+.check-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;font-size:13px}
+.check-row .label{color:var(--muted)}
+.pass{color:#4ade80;font-weight:700}
+.fail{color:#f87171;font-weight:700}
+.warn{color:#fbbf24;font-weight:700}
+.grade-big{font-size:48px;font-weight:900;text-align:center;line-height:1}
+.score-bar-wrap{background:#1e293b;border-radius:999px;height:6px;margin-top:8px;overflow:hidden}
+.score-bar{height:100%;border-radius:999px;transition:width .6s}
+.risk-badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:700}
+.risk-LOW{background:rgba(34,197,94,.2);color:#4ade80}
+.risk-MEDIUM{background:rgba(249,115,22,.2);color:#fb923c}
+.risk-HIGH{background:rgba(239,68,68,.2);color:#f87171}
+
+/* Toast */
+#toast{position:fixed;bottom:20px;right:20px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:10px 18px;font-size:13px;z-index:999;transform:translateY(60px);opacity:0;transition:.3s}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.success{border-color:rgba(34,197,94,.3);color:#4ade80}
+#toast.error{border-color:rgba(239,68,68,.3);color:#f87171}
+code{background:#1e293b;padding:1px 5px;border-radius:3px;font-family:monospace;font-size:11px;color:var(--accent)}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-brand">✉ MailGuard</a>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/docs" target="_blank">API Docs</a>
+    <a href="/admin">Admin</a>
+  </div>
+</nav>
+
+<div class="layout">
+
+  <!-- Endpoint list -->
+  <div class="sidebar">
+    <div class="sidebar-section">Core</div>
+    <div class="endpoint active" onclick="loadEndpoint('analyze',this)">
+      <span class="method post">POST</span>/analyze
+    </div>
+    <div class="sidebar-section">Reports</div>
+    <div class="endpoint" onclick="loadEndpoint('report',this)">
+      <span class="method get">GET</span>/report
+    </div>
+    <div class="endpoint" onclick="loadEndpoint('compliance',this)">
+      <span class="method get">GET</span>/report/compliance
+    </div>
+    <div class="sidebar-section">Monitoring</div>
+    <div class="endpoint" onclick="loadEndpoint('monitor_add',this)">
+      <span class="method post">POST</span>/monitor
+    </div>
+    <div class="endpoint" onclick="loadEndpoint('monitor_list',this)">
+      <span class="method get">GET</span>/monitor
+    </div>
+    <div class="sidebar-section">Scheduling</div>
+    <div class="endpoint" onclick="loadEndpoint('schedule_add',this)">
+      <span class="method post">POST</span>/schedule
+    </div>
+    <div class="endpoint" onclick="loadEndpoint('schedule_list',this)">
+      <span class="method get">GET</span>/schedule
+    </div>
+    <div class="sidebar-section">Portfolio</div>
+    <div class="endpoint" onclick="loadEndpoint('portfolio_add',this)">
+      <span class="method post">POST</span>/portfolio
+    </div>
+    <div class="endpoint" onclick="loadEndpoint('portfolio_get',this)">
+      <span class="method get">GET</span>/portfolio
+    </div>
+    <div class="sidebar-section">Other</div>
+    <div class="endpoint" onclick="loadEndpoint('history',this)">
+      <span class="method get">GET</span>/history
+    </div>
+    <div class="endpoint" onclick="loadEndpoint('usage',this)">
+      <span class="method get">GET</span>/usage
+    </div>
+    <div class="endpoint" onclick="loadEndpoint('health',this)">
+      <span class="method get">GET</span>/health
+    </div>
+  </div>
+
+  <!-- Main area -->
+  <div class="center">
+    <div class="toolbar">
+      <input type="text" id="url-bar" value="/analyze" readonly style="color:var(--muted)"/>
+      <input type="text" id="api-key" class="key-input" placeholder="X-API-Key" value="mailg-free-49a2de07e1952417ed865c5c"/>
+      <button class="run-btn" id="run-btn" onclick="runRequest()">▶ Send</button>
+    </div>
+    <div class="panels">
+      <div class="req-panel">
+        <div class="panel-header">
+          Request Body
+          <div class="actions">
+            <span id="method-badge" style="font-size:11px;font-weight:700;color:#7dd3fc">POST</span>
+          </div>
+        </div>
+        <textarea id="req-body">{"domain": "google.com"}</textarea>
+      </div>
+      <div class="res-panel">
+        <div class="panel-header">
+          Response
+          <div class="actions">
+            <button onclick="copyResponse()" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:11px">Copy</button>
+          </div>
+        </div>
+        <div class="res-body" id="res-body">// Click ▶ Send to execute the request…</div>
+        <div class="status-bar" id="status-bar">
+          <span>Status: –</span>
+          <span>Time: –</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Parsed results panel -->
+  <div class="right-panel" id="right-panel">
+    <div class="result-section">
+      <h3>Grade</h3>
+      <div class="grade-big" id="r-grade" style="color:#475569">–</div>
+      <div class="score-bar-wrap"><div class="score-bar" id="r-score-bar" style="width:0%;background:#334155"></div></div>
+      <div style="text-align:center;font-size:12px;color:var(--muted);margin-top:6px" id="r-score">–</div>
+    </div>
+    <div class="result-section">
+      <h3>Controls</h3>
+      <div class="check-row"><span class="label">SPF -all</span><span id="r-spf">–</span></div>
+      <div class="check-row"><span class="label">DMARC enforce</span><span id="r-dmarc">–</span></div>
+      <div class="check-row"><span class="label">DKIM found</span><span id="r-dkim">–</span></div>
+      <div class="check-row"><span class="label">MTA-STS</span><span id="r-mta">–</span></div>
+      <div class="check-row"><span class="label">STARTTLS</span><span id="r-starttls">–</span></div>
+      <div class="check-row"><span class="label">Blacklist</span><span id="r-bl">–</span></div>
+    </div>
+    <div class="result-section">
+      <h3>Spoofability</h3>
+      <div style="text-align:center;padding:8px 0" id="r-spoof"><span style="color:#475569">–</span></div>
+    </div>
+    <div class="result-section" id="r-issues-section" style="display:none">
+      <h3>Issues</h3>
+      <div id="r-issues" style="font-size:12px;color:#f87171;line-height:1.8"></div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+const ENDPOINTS = {
+  analyze:       { method:'POST', url:'/analyze',          body:'{"domain": "google.com"}', params:null },
+  report:        { method:'GET',  url:'/report',           body:null, params:'?domain=google.com' },
+  compliance:    { method:'GET',  url:'/report/compliance',body:null, params:'?domain=google.com&framework=soc2' },
+  monitor_add:   { method:'POST', url:'/monitor',          body:'{"domain": "google.com", "check_interval_hours": 24}', params:null },
+  monitor_list:  { method:'GET',  url:'/monitor',          body:null, params:null },
+  schedule_add:  { method:'POST', url:'/schedule',         body:'{"domain": "google.com", "frequency": "daily", "label": "Google daily"}', params:null },
+  schedule_list: { method:'GET',  url:'/schedule',         body:null, params:null },
+  portfolio_add: { method:'POST', url:'/portfolio',        body:'{"domain": "google.com", "label": "Google"}', params:null },
+  portfolio_get: { method:'GET',  url:'/portfolio',        body:null, params:null },
+  history:       { method:'GET',  url:'/history',          body:null, params:'?limit=10' },
+  usage:         { method:'GET',  url:'/usage',            body:null, params:null },
+  health:        { method:'GET',  url:'/health',           body:null, params:null },
+};
+
+let currentEndpoint = 'analyze';
+
+function loadEndpoint(name, el) {
+  currentEndpoint = name;
+  const ep = ENDPOINTS[name];
+  document.querySelectorAll('.endpoint').forEach(e => e.classList.remove('active'));
+  if (el) el.classList.add('active');
+  const url = ep.url + (ep.params || '');
+  document.getElementById('url-bar').value = url;
+  document.getElementById('method-badge').textContent = ep.method;
+  document.getElementById('method-badge').style.color = ep.method === 'POST' ? '#7dd3fc' : ep.method === 'GET' ? '#4ade80' : '#f87171';
+  const ta = document.getElementById('req-body');
+  if (ep.body) { ta.value = ep.body; ta.disabled = false; ta.style.opacity = '1'; }
+  else { ta.value = '// No request body for ' + ep.method + ' requests'; ta.disabled = true; ta.style.opacity = '.4'; }
+  document.getElementById('res-body').textContent = '// Click ▶ Send to execute the request…';
+  document.getElementById('status-bar').innerHTML = '<span>Status: –</span><span>Time: –</span>';
+  clearResults();
+}
+
+async function runRequest() {
+  const ep = ENDPOINTS[currentEndpoint];
+  const apiKey = document.getElementById('api-key').value.trim();
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true; btn.textContent = '…';
+
+  const url = ep.url + (ep.params || '');
+  const headers = { 'X-API-Key': apiKey };
+  const opts = { method: ep.method, headers };
+  if (ep.method === 'POST') {
+    headers['Content-Type'] = 'application/json';
+    try { opts.body = document.getElementById('req-body').value; }
+    catch(e) {}
+  }
+
+  const t0 = Date.now();
+  try {
+    const r = await fetch(url, opts);
+    const elapsed = Date.now() - t0;
+    const sb = document.getElementById('status-bar');
+    const okClass = r.ok ? 'ok' : 'err';
+    sb.innerHTML = `<span class="${okClass}">Status: ${r.status} ${r.statusText}</span><span>Time: ${elapsed}ms</span>`;
+
+    const ct = r.headers.get('content-type') || '';
+    if (ct.includes('application/pdf') || ct.includes('application/octet-stream')) {
+      document.getElementById('res-body').textContent = '// PDF response received (' + r.headers.get('content-length') + ' bytes)\n// Use the /report endpoint via SDK or curl to save to file.';
+    } else {
+      const data = await r.json();
+      document.getElementById('res-body').textContent = JSON.stringify(data, null, 2);
+      if (r.ok && currentEndpoint === 'analyze') updateResults(data);
+    }
+  } catch(e) {
+    document.getElementById('res-body').textContent = 'Error: ' + e.message;
+    document.getElementById('status-bar').innerHTML = '<span class="err">Error: ' + e.message + '</span>';
+  }
+  btn.disabled = false; btn.textContent = '▶ Send';
+}
+
+function updateResults(data) {
+  const grade = data.grade || '–';
+  const gradeColors = {'A+':'#22c55e','A':'#4ade80','B':'#a3e635','C':'#fbbf24','D':'#fb923c','F':'#f87171'};
+  const gc = gradeColors[grade] || '#94a3b8';
+  document.getElementById('r-grade').textContent = grade;
+  document.getElementById('r-grade').style.color = gc;
+
+  const score = data.score || 0;
+  document.getElementById('r-score').textContent = score + '/100';
+  const bar = document.getElementById('r-score-bar');
+  bar.style.width = score + '%';
+  bar.style.background = gc;
+
+  const spf = data.spf || {};
+  const dmarc = data.dmarc || {};
+  const dkim = data.dkim || {};
+  const mta = data.mta_sts || {};
+  const mx = data.mx || {};
+  const bl = data.blacklist || {};
+  const spoof = data.spoofability || {};
+
+  setCheck('r-spf', spf.found && spf.hardfail_all);
+  setCheck('r-dmarc', dmarc.enforced);
+  setCheck('r-dkim', dkim.found && !dkim.has_weak_key);
+  setCheck('r-mta', mta.fully_configured);
+  setCheck('r-starttls', mx.all_support_starttls);
+  setCheck('r-bl', bl.clean);
+
+  const risk = spoof.risk || 'UNKNOWN';
+  document.getElementById('r-spoof').innerHTML = `<span class="risk-badge risk-${risk}">${risk}</span>`;
+
+  const issues = data.issues || [];
+  if (issues.length) {
+    document.getElementById('r-issues-section').style.display = 'block';
+    document.getElementById('r-issues').innerHTML = issues.map(i => '• ' + i).join('<br>');
+  } else {
+    document.getElementById('r-issues-section').style.display = 'none';
+  }
+}
+
+function setCheck(id, ok) {
+  const el = document.getElementById(id);
+  if (ok === undefined || ok === null) { el.textContent = '–'; el.className = ''; }
+  else if (ok) { el.textContent = 'PASS'; el.className = 'pass'; }
+  else { el.textContent = 'FAIL'; el.className = 'fail'; }
+}
+
+function clearResults() {
+  ['r-spf','r-dmarc','r-dkim','r-mta','r-starttls','r-bl'].forEach(id => setCheck(id, null));
+  document.getElementById('r-grade').textContent = '–';
+  document.getElementById('r-grade').style.color = '#475569';
+  document.getElementById('r-score').textContent = '–';
+  document.getElementById('r-score-bar').style.width = '0%';
+  document.getElementById('r-spoof').innerHTML = '<span style="color:#475569">–</span>';
+  document.getElementById('r-issues-section').style.display = 'none';
+}
+
+function copyResponse() {
+  const text = document.getElementById('res-body').textContent;
+  navigator.clipboard.writeText(text).then(() => toast('Copied!', 'success')).catch(() => {});
+}
+
+function toast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `show ${type}`;
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.className = '', 2500);
+}
+
+// Keyboard shortcut: Ctrl+Enter to send
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') runRequest();
+});
+</script>
+</body>
+</html>

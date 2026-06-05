@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MailGuard Admin</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#020817;--surface:#0f172a;--border:#1e293b;--border2:#334155;
+  --text:#f8fafc;--muted:#94a3b8;--accent:#38bdf8;--accent2:#818cf8;
+  --green:#22c55e;--yellow:#eab308;--red:#ef4444;--orange:#f97316;
+}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif;font-size:14px;min-height:100vh}
+.sidebar{position:fixed;top:0;left:0;width:220px;height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100}
+.sidebar-logo{padding:24px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.sidebar-logo .icon{font-size:22px}
+.sidebar-logo .brand{font-size:16px;font-weight:700;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sidebar-logo .sub{font-size:10px;color:var(--muted);margin-top:2px}
+nav{flex:1;padding:12px 0;overflow-y:auto}
+nav a{display:flex;align-items:center;gap:10px;padding:10px 20px;color:var(--muted);text-decoration:none;border-radius:0;transition:.15s;cursor:pointer;font-size:13px}
+nav a:hover,nav a.active{color:var(--text);background:rgba(56,189,248,.08)}
+nav a.active{border-right:2px solid var(--accent)}
+nav a .icon{font-size:15px;width:18px;text-align:center}
+.nav-section{padding:8px 20px 4px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:8px}
+.sidebar-footer{padding:16px 20px;border-top:1px solid var(--border);font-size:11px;color:var(--muted)}
+.main{margin-left:220px;min-height:100vh}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.topbar h1{font-size:15px;font-weight:600}
+.topbar .actions{display:flex;align-items:center;gap:12px}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600}
+.badge-green{background:rgba(34,197,94,.15);color:#4ade80}
+.badge-red{background:rgba(239,68,68,.15);color:#f87171}
+.badge-blue{background:rgba(56,189,248,.15);color:#7dd3fc}
+.badge-yellow{background:rgba(234,179,8,.15);color:#fbbf24}
+.badge-orange{background:rgba(249,115,22,.15);color:#fb923c}
+.badge-purple{background:rgba(129,140,248,.15);color:#a5b4fc}
+.content{padding:24px 28px}
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg)}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px;width:360px}
+.login-card h1{font-size:22px;font-weight:700;margin-bottom:8px}
+.login-card p{color:var(--muted);margin-bottom:28px;font-size:13px}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:500}
+input,select,textarea{width:100%;background:#1e293b;border:1px solid var(--border2);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;outline:none;transition:.15s}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(56,189,248,.1)}
+.form-group{margin-bottom:16px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:.15s}
+.btn-primary{background:var(--accent);color:#020817}
+.btn-primary:hover{background:#7dd3fc}
+.btn-danger{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.2)}
+.btn-danger:hover{background:rgba(239,68,68,.25)}
+.btn-ghost{background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--border2)}
+.btn-ghost:hover{background:rgba(255,255,255,.1);color:var(--text)}
+.btn-success{background:rgba(34,197,94,.15);color:#4ade80;border:1px solid rgba(34,197,94,.2)}
+.btn-success:hover{background:rgba(34,197,94,.25)}
+.btn-sm{padding:5px 12px;font-size:12px}
+.btn-full{width:100%;justify-content:center}
+.error-msg{color:#f87171;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);padding:10px 14px;border-radius:8px;margin-bottom:16px;font-size:13px}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px}
+.stat-card .label{font-size:11px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.stat-card .value{font-size:28px;font-weight:700;line-height:1}
+.stat-card .sub{font-size:11px;color:var(--muted);margin-top:6px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:24px}
+.card-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-header h2{font-size:14px;font-weight:600}
+.card-body{padding:0}
+table{width:100%;border-collapse:collapse}
+th{padding:10px 16px;text-align:left;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border)}
+td{padding:11px 16px;border-bottom:1px solid rgba(30,41,59,.6);font-size:13px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+.empty{text-align:center;padding:32px;color:var(--muted)}
+.grade{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;font-weight:700;font-size:12px}
+.grade-A{background:rgba(34,197,94,.15);color:#4ade80}
+.grade-B{background:rgba(132,204,22,.15);color:#a3e635}
+.grade-C{background:rgba(234,179,8,.15);color:#fbbf24}
+.grade-D{background:rgba(249,115,22,.15);color:#fb923c}
+.grade-F{background:rgba(239,68,68,.15);color:#f87171}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;width:440px;max-width:90vw}
+.modal h2{font-size:17px;font-weight:700;margin-bottom:20px}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+.section{display:none}
+.section.active{display:block}
+#toast{position:fixed;bottom:24px;right:24px;background:#0f172a;border:1px solid var(--border2);border-radius:10px;padding:12px 20px;font-size:13px;z-index:999;transform:translateY(80px);opacity:0;transition:.3s;max-width:320px}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.success{border-color:rgba(34,197,94,.3);color:#4ade80}
+#toast.error{border-color:rgba(239,68,68,.3);color:#f87171}
+code{background:#1e293b;padding:2px 6px;border-radius:4px;font-family:monospace;font-size:12px;color:var(--accent)}
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="login-screen">
+  <div class="login-card">
+    <h1>✉ MailGuard Admin</h1>
+    <p>Enter your admin secret to access the dashboard.</p>
+    <div id="login-error" class="error-msg" style="display:none"></div>
+    <div class="form-group">
+      <label>Admin Secret</label>
+      <input type="password" id="admin-key-input" placeholder="Enter admin secret..." onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="doLogin()">Sign In →</button>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div id="app" style="display:none">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <span class="icon">✉</span>
+      <div>
+        <div class="brand">MailGuard</div>
+        <div class="sub">Admin Panel</div>
+      </div>
+    </div>
+    <nav>
+      <div class="nav-section">Overview</div>
+      <a class="active" onclick="showSection('overview',this)"><span class="icon">📊</span> Dashboard</a>
+      <div class="nav-section">Management</div>
+      <a onclick="showSection('keys',this)"><span class="icon">🔑</span> API Keys</a>
+      <a onclick="showSection('waitlist',this)"><span class="icon">📋</span> Waitlist</a>
+      <div class="nav-section">Operations</div>
+      <a onclick="showSection('monitoring',this)"><span class="icon">👁</span> Monitoring</a>
+      <a onclick="showSection('scheduler',this)"><span class="icon">🕐</span> Scheduler</a>
+      <a onclick="showSection('usage',this)"><span class="icon">📈</span> Usage Stats</a>
+    </nav>
+    <div class="sidebar-footer">
+      v1.0.0 &nbsp;·&nbsp; <a href="/docs" target="_blank" style="color:var(--accent);text-decoration:none">API Docs</a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <h1 id="section-title">Dashboard</h1>
+      <div class="actions">
+        <span id="system-status" class="badge badge-green">● Healthy</span>
+        <button class="btn btn-ghost btn-sm" onclick="refreshCurrent()">↻ Refresh</button>
+        <button class="btn btn-danger btn-sm" onclick="logout()">Sign Out</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- Overview -->
+      <div id="sec-overview" class="section active">
+        <div class="stat-grid">
+          <div class="stat-card"><div class="label">API Keys</div><div class="value" id="s-keys">–</div><div class="sub">Active keys</div></div>
+          <div class="stat-card"><div class="label">Waitlist</div><div class="value" id="s-waitlist">–</div><div class="sub">Leads captured</div></div>
+          <div class="stat-card"><div class="label">Monitors</div><div class="value" id="s-monitors">–</div><div class="sub">Active domains</div></div>
+          <div class="stat-card"><div class="label">Scheduled Jobs</div><div class="value" id="s-jobs">–</div><div class="sub">Auto scans</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h2>Usage by API Key</h2></div>
+          <div class="card-body"><table>
+            <thead><tr><th>Key</th><th>Tier</th><th>Requests</th><th>Avg Score</th><th>Last Used</th></tr></thead>
+            <tbody id="usage-table-body"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- API Keys -->
+      <div id="sec-keys" class="section">
+        <div class="card">
+          <div class="card-header">
+            <h2>API Keys</h2>
+            <button class="btn btn-primary btn-sm" onclick="openNewKeyModal()">+ New Key</button>
+          </div>
+          <div class="card-body"><table>
+            <thead><tr><th>Key</th><th>Tier</th><th>Expires</th><th>Actions</th></tr></thead>
+            <tbody id="keys-table-body"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- Waitlist -->
+      <div id="sec-waitlist" class="section">
+        <div class="card">
+          <div class="card-header"><h2>Waitlist / Leads</h2><span id="wl-count" class="badge badge-blue">0 entries</span></div>
+          <div class="card-body"><table>
+            <thead><tr><th>Name</th><th>Email</th><th>Plan</th><th>Company</th><th>Signed Up</th><th>Actions</th></tr></thead>
+            <tbody id="waitlist-table-body"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- Monitoring -->
+      <div id="sec-monitoring" class="section">
+        <div class="card">
+          <div class="card-header"><h2>Monitored Domains</h2></div>
+          <div class="card-body"><table>
+            <thead><tr><th>Domain</th><th>Grade</th><th>Score</th><th>Interval</th><th>Last Checked</th><th>Alerts</th></tr></thead>
+            <tbody id="monitor-table-body"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- Scheduler -->
+      <div id="sec-scheduler" class="section">
+        <div class="card">
+          <div class="card-header"><h2>Scheduled Scans</h2></div>
+          <div class="card-body"><table>
+            <thead><tr><th>Label</th><th>Domain</th><th>Frequency</th><th>Runs</th><th>Last Grade</th><th>Next Run</th></tr></thead>
+            <tbody id="scheduler-table-body"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- Usage -->
+      <div id="sec-usage" class="section">
+        <div class="card">
+          <div class="card-header"><h2>Detailed Usage Stats</h2></div>
+          <div class="card-body"><table>
+            <thead><tr><th>Key</th><th>Total Reqs</th><th>Avg Score</th><th>Grade Distribution</th><th>Top Domain</th></tr></thead>
+            <tbody id="detailed-usage-body"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- New Key Modal -->
+<div class="modal-overlay" id="new-key-modal">
+  <div class="modal">
+    <h2>Create API Key</h2>
+    <div class="form-group">
+      <label>API Key Value</label>
+      <input type="text" id="new-key-val" placeholder="e.g. mailg-pro-mycompany-xyz"/>
+    </div>
+    <div class="form-group">
+      <label>Tier</label>
+      <select id="new-key-tier">
+        <option value="free">Free</option>
+        <option value="pro" selected>Pro</option>
+        <option value="enterprise">Enterprise</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Expires At (optional, ISO date)</label>
+      <input type="text" id="new-key-expires" placeholder="2026-12-31T00:00:00Z"/>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('new-key-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="createKey()">Create Key</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+let ADMIN_KEY = '';
+let currentSection = 'overview';
+
+async function doLogin() {
+  const k = document.getElementById('admin-key-input').value.trim();
+  if (!k) return;
+  try {
+    await apiFetch('/admin/system', 'GET', null, k);
+    ADMIN_KEY = k;
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    loadSection('overview');
+  } catch(e) {
+    document.getElementById('login-error').textContent = 'Invalid admin secret.';
+    document.getElementById('login-error').style.display = 'block';
+  }
+}
+
+function logout() {
+  ADMIN_KEY = '';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('admin-key-input').value = '';
+  document.getElementById('login-error').style.display = 'none';
+}
+
+async function apiFetch(path, method='GET', body=null, key=null) {
+  const opts = { method, headers: { 'X-Admin-Secret': key || ADMIN_KEY, 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(path, opts);
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({error: r.statusText}));
+    throw new Error(e.detail || e.error || r.statusText);
+  }
+  return r.json();
+}
+
+const TITLES = {overview:'Dashboard',keys:'API Keys',waitlist:'Waitlist / Leads',monitoring:'Monitoring',scheduler:'Scheduler',usage:'Usage Stats'};
+
+function showSection(name, el) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+  document.getElementById(`sec-${name}`).classList.add('active');
+  if (el) el.classList.add('active');
+  document.getElementById('section-title').textContent = TITLES[name];
+  currentSection = name;
+  loadSection(name);
+}
+
+function refreshCurrent() { loadSection(currentSection); }
+
+function loadSection(name) {
+  const map = {overview:loadOverview, keys:loadKeys, waitlist:loadWaitlist, monitoring:loadMonitoring, scheduler:loadScheduler, usage:loadUsage};
+  if (map[name]) map[name]();
+}
+
+async function loadOverview() {
+  try {
+    const [sys, usage] = await Promise.all([apiFetch('/admin/system'), apiFetch('/admin/usage')]);
+    document.getElementById('s-keys').textContent = sys.api_key_count ?? '–';
+    document.getElementById('s-waitlist').textContent = sys.waitlist_count ?? '–';
+    document.getElementById('s-monitors').textContent = sys.monitors ?? '–';
+    document.getElementById('s-jobs').textContent = sys.scheduler_jobs ?? '–';
+    const tbody = document.getElementById('usage-table-body');
+    const entries = Object.entries(usage);
+    if (!entries.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">No usage yet</td></tr>'; return; }
+    tbody.innerHTML = entries.map(([k, v]) => `
+      <tr>
+        <td><code>${k.slice(0,22)}${k.length>22?'…':''}</code></td>
+        <td>${tierBadge(v.tier||'free')}</td>
+        <td>${v.total_requests || 0}</td>
+        <td>${v.avg_score ? Math.round(v.avg_score) : '–'}</td>
+        <td>${v.last_used ? relTime(v.last_used) : '–'}</td>
+      </tr>`).join('');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function loadKeys() {
+  try {
+    const data = await apiFetch('/admin/keys');
+    const tbody = document.getElementById('keys-table-body');
+    const keys = data.keys || [];
+    if (!keys.length) { tbody.innerHTML = '<tr><td colspan="4" class="empty">No API keys</td></tr>'; return; }
+    tbody.innerHTML = keys.map(k => `
+      <tr>
+        <td><code>${k.key}</code></td>
+        <td>${tierBadge(k.tier)}</td>
+        <td>${k.expires_at ? k.expires_at.slice(0,10) : '–'}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="revokeKey('${k.key}')">Revoke</button></td>
+      </tr>`).join('');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function openNewKeyModal() {
+  document.getElementById('new-key-val').value = 'mailg-pro-' + Math.random().toString(36).slice(2,10);
+  document.getElementById('new-key-modal').classList.add('open');
+}
+
+async function createKey() {
+  const key = document.getElementById('new-key-val').value.trim();
+  const tier = document.getElementById('new-key-tier').value;
+  const expires = document.getElementById('new-key-expires').value.trim();
+  if (!key) return;
+  try {
+    await apiFetch('/admin/keys', 'POST', { new_key: key, tier, expires_at: expires || null });
+    closeModal('new-key-modal');
+    toast('API key created!', 'success');
+    loadKeys();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function revokeKey(key) {
+  if (!confirm(`Revoke key "${key.slice(0,16)}..."?`)) return;
+  try {
+    await apiFetch(`/admin/keys/${encodeURIComponent(key)}`, 'DELETE');
+    toast('Key revoked.', 'success');
+    loadKeys(); loadOverview();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function loadWaitlist() {
+  try {
+    const data = await apiFetch('/admin/waitlist');
+    document.getElementById('wl-count').textContent = `${data.total} entries`;
+    const tbody = document.getElementById('waitlist-table-body');
+    if (!data.entries.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">No waitlist entries yet</td></tr>'; return; }
+    tbody.innerHTML = data.entries.map(e => `
+      <tr>
+        <td>${esc(e.name)||'<em style="color:var(--muted)">–</em>'}</td>
+        <td>${esc(e.email)}</td>
+        <td>${tierBadge(e.plan)}</td>
+        <td>${esc(e.company)||'–'}</td>
+        <td>${relTime(e.created_at)}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="deleteWaitlist('${e.id}')">Remove</button></td>
+      </tr>`).join('');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deleteWaitlist(id) {
+  try {
+    await apiFetch(`/admin/waitlist/${id}`, 'DELETE');
+    toast('Entry removed.', 'success');
+    loadWaitlist(); loadOverview();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function loadMonitoring() {
+  try {
+    const data = await apiFetch('/admin/monitor');
+    const tbody = document.getElementById('monitor-table-body');
+    const domains = data.domains || [];
+    if (!domains.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">No monitored domains</td></tr>'; return; }
+    tbody.innerHTML = domains.map(d => {
+      const alerts = [d.slack_webhook?'Slack':'', d.alert_email?'Email':'', d.webhook_url?'Webhook':''].filter(Boolean).join(', ') || '–';
+      return `<tr>
+        <td><strong>${esc(d.domain)}</strong></td>
+        <td>${d.last_grade ? gradeBadge(d.last_grade) : '–'}</td>
+        <td>${d.last_score ?? '–'}</td>
+        <td>${d.check_interval_hours}h</td>
+        <td>${d.last_checked ? relTime(d.last_checked) : 'Never'}</td>
+        <td><span style="font-size:12px;color:var(--muted)">${alerts}</span></td>
+      </tr>`;
+    }).join('');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function loadScheduler() {
+  try {
+    const data = await apiFetch('/admin/scheduler');
+    const tbody = document.getElementById('scheduler-table-body');
+    const jobs = data.jobs || [];
+    if (!jobs.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">No scheduled jobs</td></tr>'; return; }
+    tbody.innerHTML = jobs.map(j => `
+      <tr>
+        <td><strong>${esc(j.label)}</strong></td>
+        <td>${esc(j.domain)}</td>
+        <td><span class="badge badge-blue">${j.frequency}</span></td>
+        <td>${j.run_count}</td>
+        <td>${j.last_grade ? gradeBadge(j.last_grade) : '–'}</td>
+        <td>${relTime(j.next_run)}</td>
+      </tr>`).join('');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function loadUsage() {
+  try {
+    const usage = await apiFetch('/admin/usage');
+    const tbody = document.getElementById('detailed-usage-body');
+    const entries = Object.entries(usage);
+    if (!entries.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">No usage data</td></tr>'; return; }
+    tbody.innerHTML = entries.map(([k, v]) => {
+      const dist = v.grade_distribution ? Object.entries(v.grade_distribution).map(([g,c]) => `${g}:${c}`).join(' ') : '–';
+      return `<tr>
+        <td><code>${k.slice(0,22)}${k.length>22?'…':''}</code><br><span style="font-size:11px">${tierBadge(v.tier||'free')}</span></td>
+        <td>${v.total_requests||0}</td>
+        <td>${v.avg_score ? Math.round(v.avg_score) : '–'}</td>
+        <td><span style="font-size:12px;color:var(--muted)">${dist}</span></td>
+        <td>${v.top_domain||'–'}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function tierBadge(t) {
+  const m = {free:'badge-blue',pro:'badge-purple',enterprise:'badge-orange'};
+  return `<span class="badge ${m[t]||'badge-blue'}">${t}</span>`;
+}
+function gradeBadge(g) {
+  const cl = g.startsWith('A')?'grade-A':g==='B'?'grade-B':g==='C'?'grade-C':g==='D'?'grade-D':'grade-F';
+  return `<span class="grade ${cl}">${g}</span>`;
+}
+function relTime(iso) {
+  if (!iso) return '–';
+  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s/60)}m ago`;
+  if (s < 86400) return `${Math.floor(s/3600)}h ago`;
+  return new Date(iso).toLocaleDateString();
+}
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function toast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `show ${type}`;
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.className = '', 3000);
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
+});
+</script>
+</body>
+</html>

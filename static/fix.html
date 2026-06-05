@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MailGuard — Fix Wizard</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#020817;--surface:#0f172a;--surface2:#1e293b;--border:#1e293b;--border2:#334155;
+  --text:#f8fafc;--muted:#94a3b8;--accent:#38bdf8;--accent2:#818cf8;
+  --green:#22c55e;--red:#ef4444;--orange:#f97316;--yellow:#eab308;
+  --crit:#ef4444;--high:#f97316;--medium:#eab308;--low:#22c55e;--info:#38bdf8;
+}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif;font-size:14px;min-height:100vh}
+a{color:var(--accent);text-decoration:none}
+
+/* Nav */
+nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.nav-brand{font-size:16px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.nav-links{display:flex;gap:20px;align-items:center}
+.nav-links a{color:var(--muted);font-size:13px}
+.nav-links a:hover{color:var(--text)}
+
+/* Entry screen */
+#entry-screen{min-height:calc(100vh - 54px);display:flex;align-items:center;justify-content:center;padding:24px}
+.entry-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:48px;width:520px;max-width:100%;text-align:center}
+.entry-card .icon{font-size:48px;margin-bottom:20px}
+.entry-card h1{font-size:28px;font-weight:800;margin-bottom:10px}
+.entry-card h1 span{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.entry-card p{color:var(--muted);margin-bottom:32px;font-size:15px;line-height:1.6}
+.entry-input{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:14px 18px;color:var(--text);font-size:16px;outline:none;transition:.15s;margin-bottom:14px;text-align:center}
+.entry-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(56,189,248,.1)}
+.entry-btn{width:100%;background:var(--accent);color:#020817;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;transition:.15s}
+.entry-btn:hover{background:#7dd3fc}
+.entry-btn:disabled{opacity:.5;cursor:default}
+.entry-note{font-size:12px;color:var(--muted);margin-top:14px}
+
+/* Scan loading */
+#scan-screen{min-height:calc(100vh - 54px);display:none;align-items:center;justify-content:center;flex-direction:column;gap:24px}
+.scan-domain{font-size:22px;font-weight:700}
+.scan-domain span{color:var(--accent)}
+.scan-sub{color:var(--muted);font-size:14px}
+.progress-track{width:320px;height:4px;background:var(--surface2);border-radius:999px;overflow:hidden;margin-top:8px}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:999px;animation:prog 3s ease-in-out infinite}
+@keyframes prog{0%{width:0%}60%{width:85%}100%{width:95%}}
+.scan-steps{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.scan-step{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.scan-step.done{color:#4ade80}
+.scan-step .dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+
+/* Main wizard layout */
+#wizard-screen{display:none;height:calc(100vh - 54px);overflow:hidden}
+.wiz-layout{display:flex;height:100%}
+
+/* Overview panel */
+.overview-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.grade-circle{width:56px;height:56px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;flex-shrink:0}
+.domain-info h2{font-size:17px;font-weight:700;margin-bottom:2px}
+.domain-info p{font-size:12px;color:var(--muted)}
+.severity-counts{display:flex;gap:12px;margin-left:auto;flex-wrap:wrap}
+.sev-pill{display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:8px;font-size:12px;font-weight:700}
+.sev-CRITICAL{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.2)}
+.sev-HIGH{background:rgba(249,115,22,.15);color:#fb923c;border:1px solid rgba(249,115,22,.2)}
+.sev-MEDIUM{background:rgba(234,179,8,.15);color:#fbbf24;border:1px solid rgba(234,179,8,.2)}
+.sev-LOW{background:rgba(34,197,94,.15);color:#4ade80;border:1px solid rgba(34,197,94,.2)}
+.btn-rescan{margin-left:8px;background:transparent;border:1px solid var(--border2);border-radius:8px;padding:7px 14px;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:.15s}
+.btn-rescan:hover{border-color:var(--accent);color:var(--accent)}
+.btn-pdf{background:var(--accent);color:#020817;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;transition:.15s}
+.btn-pdf:hover{background:#7dd3fc}
+
+/* Main columns */
+.wiz-main{display:flex;flex:1;overflow:hidden;flex-direction:column}
+.wiz-columns{display:flex;flex:1;overflow:hidden}
+
+/* Vuln list sidebar */
+.vuln-list{width:260px;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;flex-shrink:0}
+.vuln-list-header{padding:12px 16px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border)}
+.vuln-item{padding:12px 16px;cursor:pointer;border-bottom:1px solid rgba(30,41,59,.5);transition:.12s;position:relative}
+.vuln-item:hover{background:rgba(255,255,255,.03)}
+.vuln-item.active{background:rgba(56,189,248,.07);border-right:2px solid var(--accent)}
+.vuln-item .vi-sev{font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-bottom:5px;display:inline-block}
+.vi-CRITICAL{background:rgba(239,68,68,.2);color:#f87171}
+.vi-HIGH{background:rgba(249,115,22,.2);color:#fb923c}
+.vi-MEDIUM{background:rgba(234,179,8,.2);color:#fbbf24}
+.vi-LOW{background:rgba(34,197,94,.2);color:#4ade80}
+.vi-INFO{background:rgba(56,189,248,.2);color:#7dd3fc}
+.vuln-item .vi-proto{font-size:12px;font-weight:600;color:var(--text)}
+.vuln-item .vi-title{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4}
+.vi-check{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#4ade80;font-size:14px;display:none}
+.vuln-item.resolved .vi-check{display:block}
+.vuln-item.resolved .vi-proto{text-decoration:line-through;opacity:.5}
+
+/* Detail panel */
+.detail-panel{flex:1;overflow-y:auto;padding:24px}
+
+/* Empty state */
+.detail-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;color:var(--muted);gap:12px}
+.detail-empty .icon{font-size:40px;opacity:.4}
+
+/* Cards in detail panel */
+.d-section{margin-bottom:20px}
+.d-section h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.info-card{background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.15);border-radius:10px;padding:16px;font-size:13px;color:#cbd5e1;line-height:1.7}
+.warn-card{background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.15);border-radius:10px;padding:16px;font-size:13px;color:#fdba74;line-height:1.7}
+.status-card{background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:10px;padding:16px;font-size:13px;color:#fca5a5;line-height:1.7}
+.status-card.ok{background:rgba(34,197,94,.06);border-color:rgba(34,197,94,.15);color:#86efac}
+.step-list{list-style:none;counter-reset:steps;display:flex;flex-direction:column;gap:10px}
+.step-list li{counter-increment:steps;display:flex;gap:10px;font-size:13px;color:#cbd5e1;line-height:1.6}
+.step-list li::before{content:counter(steps);background:rgba(56,189,248,.15);color:var(--accent);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px}
+
+/* DNS record box */
+.dns-records{display:flex;flex-direction:column;gap:12px}
+.dns-record{background:#0d1b2a;border:1px solid var(--border2);border-radius:10px;overflow:hidden}
+.dns-record-label{padding:8px 14px;background:rgba(56,189,248,.07);border-bottom:1px solid var(--border2);font-size:11px;color:#7dd3fc;font-weight:600}
+.dns-table{width:100%;border-collapse:collapse}
+.dns-table th{padding:6px 12px;font-size:10px;font-weight:700;color:var(--muted);text-align:left;border-bottom:1px solid rgba(51,65,85,.4);text-transform:uppercase}
+.dns-table td{padding:8px 12px;font-size:12px;font-family:monospace;color:#e2e8f0;border-bottom:1px solid rgba(51,65,85,.2)}
+.dns-table tr:last-child td{border:none}
+.dns-value{word-break:break-all;max-width:340px}
+.copy-row{display:flex;align-items:center;justify-content:space-between;padding:6px 12px 10px;gap:8px}
+.copy-btn{background:transparent;border:1px solid var(--border2);border-radius:6px;padding:4px 10px;color:var(--muted);font-size:11px;cursor:pointer;transition:.12s;white-space:nowrap}
+.copy-btn:hover{border-color:var(--accent);color:var(--accent)}
+.copy-btn.copied{border-color:rgba(34,197,94,.3);color:#4ade80}
+
+/* Policy file box */
+.policy-box{background:#0d1b2a;border:1px solid var(--border2);border-radius:10px;overflow:hidden}
+.policy-header{padding:8px 14px;background:rgba(129,140,248,.07);border-bottom:1px solid var(--border2);font-size:11px;color:#a5b4fc;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.policy-content{padding:14px;font-family:monospace;font-size:12px;color:#94a3b8;white-space:pre;line-height:1.7}
+
+/* Effort/impact pills */
+.meta-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+.meta-pill{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);background:var(--surface2);border:1px solid var(--border2);padding:5px 12px;border-radius:999px}
+.meta-pill .ml{color:var(--accent)}
+
+/* Delisting links */
+.delink-list{display:flex;flex-direction:column;gap:8px}
+.delink{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:10px 14px;font-size:13px}
+.delink a{color:var(--accent);font-size:12px}
+
+/* All-clear state */
+.all-clear{text-align:center;padding:48px 24px;display:flex;flex-direction:column;align-items:center;gap:16px}
+.all-clear .tick{font-size:56px}
+.all-clear h2{font-size:24px;font-weight:800;color:#4ade80}
+.all-clear p{color:var(--muted);max-width:400px;line-height:1.6}
+
+/* Severity header badge */
+.sev-header{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:6px;font-size:12px;font-weight:700;margin-bottom:12px}
+.sh-CRITICAL{background:rgba(239,68,68,.15);color:#f87171}
+.sh-HIGH{background:rgba(249,115,22,.15);color:#fb923c}
+.sh-MEDIUM{background:rgba(234,179,8,.15);color:#fbbf24}
+.sh-LOW{background:rgba(34,197,94,.15);color:#4ade80}
+
+.detail-title{font-size:20px;font-weight:800;margin-bottom:6px;line-height:1.3}
+.ref-line{font-size:11px;color:var(--muted);margin-bottom:20px}
+.ref-line span{color:var(--accent)}
+
+/* Toast */
+#toast{position:fixed;bottom:20px;right:20px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:10px 18px;font-size:13px;z-index:999;transform:translateY(60px);opacity:0;transition:.25s}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.success{border-color:rgba(34,197,94,.3);color:#4ade80}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-brand">✉ MailGuard</a>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/docs" target="_blank">API Docs</a>
+    <a href="/demo">Playground</a>
+  </div>
+</nav>
+
+<!-- Entry screen -->
+<div id="entry-screen">
+  <div class="entry-card">
+    <div class="icon">🔧</div>
+    <h1>Email Security <span>Fix Wizard</span></h1>
+    <p>Enter your domain below. MailGuard will scan it, explain every vulnerability found, and give you the exact DNS records and configuration to fix each one.</p>
+    <input class="entry-input" type="text" id="entry-domain" placeholder="yourdomain.com" onkeydown="if(event.key==='Enter')startScan()"/>
+    <div id="entry-error" style="color:#f87171;font-size:13px;margin-bottom:12px;display:none"></div>
+    <button class="entry-btn" id="entry-btn" onclick="startScan()">Scan & Fix My Domain →</button>
+    <p class="entry-note">Free tier: 10 scans/day · No account required · Powered by MailGuard</p>
+  </div>
+</div>
+
+<!-- Scan loading screen -->
+<div id="scan-screen">
+  <div class="scan-domain">Scanning <span id="scan-domain-name"></span></div>
+  <div class="scan-sub">Running 11 security checks — this takes 15–30 seconds</div>
+  <div class="progress-track"><div class="progress-fill"></div></div>
+  <div class="scan-steps" id="scan-steps">
+    <div class="scan-step" id="st-spf"><span class="dot"></span> Checking SPF record…</div>
+    <div class="scan-step" id="st-dmarc"><span class="dot"></span> Checking DMARC policy…</div>
+    <div class="scan-step" id="st-dkim"><span class="dot"></span> Probing 36 DKIM selectors…</div>
+    <div class="scan-step" id="st-mx"><span class="dot"></span> Testing MX servers &amp; STARTTLS…</div>
+    <div class="scan-step" id="st-bl"><span class="dot"></span> Checking 5 blacklists…</div>
+  </div>
+</div>
+
+<!-- Wizard screen -->
+<div id="wizard-screen">
+  <div class="wiz-main">
+    <!-- Overview bar -->
+    <div class="overview-bar" id="overview-bar">
+      <div class="grade-circle" id="ov-grade-circle">–</div>
+      <div class="domain-info">
+        <h2 id="ov-domain">–</h2>
+        <p id="ov-sub">–</p>
+      </div>
+      <div class="severity-counts" id="sev-counts"></div>
+      <button class="btn-rescan" onclick="rescan()">↻ Re-scan</button>
+      <button class="btn-pdf" id="btn-pdf" onclick="downloadPdf()">⬇ Download PDF Report</button>
+    </div>
+
+    <div class="wiz-columns">
+      <!-- Vuln list -->
+      <div class="vuln-list">
+        <div class="vuln-list-header" id="vuln-list-header">0 vulnerabilities</div>
+        <div id="vuln-items"></div>
+      </div>
+
+      <!-- Detail panel -->
+      <div class="detail-panel" id="detail-panel">
+        <div class="detail-empty">
+          <div class="icon">👈</div>
+          <p>Select a vulnerability from the list to see what it is, why it matters, and exactly how to fix it.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+let scanData = null;
+let currentVuln = null;
+let resolvedSet = new Set();
+const FREE_KEY = 'mailg-free-49a2de07e1952417ed865c5c';
+
+// ── Entry ──────────────────────────────────────────────────────────────────────
+async function startScan() {
+  const domain = document.getElementById('entry-domain').value.trim();
+  const errEl = document.getElementById('entry-error');
+  if (!domain || !domain.includes('.')) {
+    errEl.textContent = 'Please enter a valid domain (e.g. yourdomain.com)';
+    errEl.style.display = 'block';
+    return;
+  }
+  errEl.style.display = 'none';
+  document.getElementById('entry-btn').disabled = true;
+  document.getElementById('entry-btn').textContent = 'Scanning…';
+
+  // Show scan screen
+  document.getElementById('entry-screen').style.display = 'none';
+  document.getElementById('scan-screen').style.display = 'flex';
+  document.getElementById('scan-domain-name').textContent = domain;
+
+  // Animate steps
+  const steps = ['st-spf','st-dmarc','st-dkim','st-mx','st-bl'];
+  const labels = ['SPF record checked ✓','DMARC policy checked ✓','DKIM selectors probed ✓','MX servers tested ✓','Blacklists checked ✓'];
+  let si = 0;
+  const stepTimer = setInterval(() => {
+    if (si < steps.length) {
+      const el = document.getElementById(steps[si]);
+      el.classList.add('done');
+      el.querySelector('.dot').style.background = '#4ade80';
+      el.childNodes[1].textContent = ' ' + labels[si];
+      si++;
+    }
+  }, 3500);
+
+  try {
+    const r = await fetch('/analyze/educate', {
+      method: 'POST',
+      headers: {'X-API-Key': FREE_KEY, 'Content-Type': 'application/json'},
+      body: JSON.stringify({domain})
+    });
+    clearInterval(stepTimer);
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      showEntry(e.detail || 'Scan failed. Please try again.');
+      return;
+    }
+    scanData = await r.json();
+    showWizard();
+  } catch(e) {
+    clearInterval(stepTimer);
+    showEntry('Network error: ' + e.message);
+  }
+}
+
+function showEntry(err) {
+  document.getElementById('scan-screen').style.display = 'none';
+  document.getElementById('entry-screen').style.display = 'flex';
+  document.getElementById('entry-btn').disabled = false;
+  document.getElementById('entry-btn').textContent = 'Scan & Fix My Domain →';
+  if (err) {
+    const el = document.getElementById('entry-error');
+    el.textContent = err;
+    el.style.display = 'block';
+  }
+}
+
+async function rescan() {
+  if (!scanData) return;
+  const domain = scanData.domain;
+  document.getElementById('wizard-screen').style.display = 'none';
+  document.getElementById('scan-screen').style.display = 'flex';
+  document.getElementById('scan-domain-name').textContent = domain;
+  // Reset step animations
+  ['st-spf','st-dmarc','st-dkim','st-mx','st-bl'].forEach(id => {
+    const el = document.getElementById(id);
+    el.classList.remove('done');
+  });
+  try {
+    const r = await fetch('/analyze/educate', {
+      method: 'POST',
+      headers: {'X-API-Key': FREE_KEY, 'Content-Type': 'application/json'},
+      body: JSON.stringify({domain})
+    });
+    if (r.ok) {
+      scanData = await r.json();
+      resolvedSet = new Set();
+      showWizard();
+    } else {
+      showWizard(); // show old data
+    }
+  } catch(e) {
+    showWizard();
+  }
+}
+
+// ── Wizard ─────────────────────────────────────────────────────────────────────
+function showWizard() {
+  document.getElementById('scan-screen').style.display = 'none';
+  document.getElementById('wizard-screen').style.display = 'block';
+  renderOverview();
+  renderVulnList();
+  // Auto-select first vuln
+  if (scanData.vulnerabilities && scanData.vulnerabilities.length > 0) {
+    selectVuln(0);
+  }
+}
+
+const GRADE_COLORS = {'A+':'#22c55e','A':'#4ade80','B':'#a3e635','C':'#fbbf24','D':'#fb923c','F':'#f87171'};
+
+function renderOverview() {
+  const grade = scanData.scan_grade || 'F';
+  const score = scanData.scan_score || 0;
+  const gc = GRADE_COLORS[grade] || '#f87171';
+  const circle = document.getElementById('ov-grade-circle');
+  circle.textContent = grade;
+  circle.style.background = gc + '22';
+  circle.style.color = gc;
+  circle.style.border = `2px solid ${gc}44`;
+  document.getElementById('ov-domain').textContent = scanData.domain;
+  document.getElementById('ov-sub').textContent = `Score: ${score}/100 · Risk: ${scanData.spoofability_risk || 'UNKNOWN'} · ${scanData.vulnerability_count} issue(s) found`;
+  document.getElementById('btn-pdf').setAttribute('data-domain', scanData.domain);
+
+  const counts = [
+    ['CRITICAL', scanData.critical_count],
+    ['HIGH', scanData.high_count],
+    ['MEDIUM', scanData.medium_count],
+    ['LOW', scanData.low_count],
+  ].filter(([,n]) => n > 0);
+  document.getElementById('sev-counts').innerHTML = counts.map(([s,n]) =>
+    `<div class="sev-pill sev-${s}">${s}: ${n}</div>`
+  ).join('') + (counts.length === 0 ? '<div class="sev-pill sev-LOW">All Clear</div>' : '');
+}
+
+function renderVulnList() {
+  const vulns = scanData.vulnerabilities || [];
+  document.getElementById('vuln-list-header').textContent = `${vulns.length} vulnerabilit${vulns.length === 1 ? 'y' : 'ies'} found`;
+  document.getElementById('vuln-items').innerHTML = vulns.map((v, i) => `
+    <div class="vuln-item${resolvedSet.has(i) ? ' resolved' : ''}" id="vi-${i}" onclick="selectVuln(${i})">
+      <div class="vi-sev vi-${v.severity}">${v.severity}</div>
+      <div class="vi-proto">${esc(v.protocol)}</div>
+      <div class="vi-title">${esc(v.title)}</div>
+      <div class="vi-check">✓</div>
+    </div>`).join('') || '<div style="padding:20px;color:var(--muted);font-size:13px;text-align:center">No vulnerabilities found!<br>Your domain is well protected.</div>';
+}
+
+function selectVuln(i) {
+  document.querySelectorAll('.vuln-item').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById(`vi-${i}`);
+  if (el) el.classList.add('active');
+  currentVuln = i;
+  renderDetail(scanData.vulnerabilities[i]);
+}
+
+function renderDetail(v) {
+  if (!v) return;
+  const dp = document.getElementById('detail-panel');
+  const dnsHtml = renderDnsRecords(v);
+  const policyHtml = renderPolicyFile(v);
+  const delistHtml = renderDelisting(v);
+  const stepsHtml = (v.fix_steps || []).map(s => `<li><span>${esc(s)}</span></li>`).join('');
+
+  dp.innerHTML = `
+    <div class="sev-header sh-${v.severity}">${v.severity}</div>
+    <div class="detail-title">${esc(v.title)}</div>
+    <div class="ref-line">Protocol: <span>${esc(v.protocol)}</span> · Standard: <span>${esc(v.standard || v.rfc || '')}</span> · Reference: <span>${esc(v.rfc || '')}</span></div>
+
+    <div class="d-section">
+      <h3>📖 What is ${esc(v.protocol)}?</h3>
+      <div class="info-card">${esc(v.what_is_it)}</div>
+    </div>
+
+    <div class="d-section">
+      <h3>⚠️ Why does it matter?</h3>
+      <div class="warn-card">${esc(v.why_it_matters)}</div>
+    </div>
+
+    <div class="d-section">
+      <h3>🔍 Current status on your domain</h3>
+      <div class="status-card">${esc(v.current_status)}</div>
+    </div>
+
+    ${stepsHtml ? `
+    <div class="d-section">
+      <h3>🔧 How to fix it</h3>
+      <ol class="step-list">${stepsHtml}</ol>
+    </div>` : ''}
+
+    ${dnsHtml ? `
+    <div class="d-section">
+      <h3>📋 DNS Records to Add</h3>
+      <div class="dns-records">${dnsHtml}</div>
+    </div>` : ''}
+
+    ${policyHtml}
+
+    ${delistHtml}
+
+    <div class="d-section">
+      <h3>📊 Effort &amp; Impact</h3>
+      <div class="meta-row">
+        <div class="meta-pill"><span class="ml">⏱</span> ${esc(v.estimated_effort || '–')}</div>
+        <div class="meta-pill"><span class="ml">🎯</span> ${esc(v.estimated_impact || '–')}</div>
+      </div>
+    </div>
+
+    <div style="margin-top:16px;padding:14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border2)">
+      <button onclick="markResolved(${currentVuln})" style="background:rgba(34,197,94,.15);color:#4ade80;border:1px solid rgba(34,197,94,.2);border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;margin-right:10px" id="resolve-btn-${currentVuln}">
+        ${resolvedSet.has(currentVuln) ? '✓ Marked as Fixed' : '✓ Mark as Fixed'}
+      </button>
+      <span style="font-size:12px;color:var(--muted)">After applying the fix, click Re-scan to verify</span>
+    </div>
+  `;
+}
+
+function renderDnsRecords(v) {
+  if (!v.dns_records || v.dns_records.length === 0) return '';
+  return v.dns_records.map((r, i) => `
+    <div class="dns-record">
+      <div class="dns-record-label">${esc(r.label || 'DNS Record')}</div>
+      <table class="dns-table">
+        <thead><tr><th>Type</th><th>Name</th><th>TTL</th><th>Value</th></tr></thead>
+        <tbody><tr>
+          <td>${esc(r.type)}</td>
+          <td><code style="font-size:12px">${esc(r.name)}</code></td>
+          <td>${esc(r.ttl || '3600')}</td>
+          <td class="dns-value"><code style="font-size:11px;word-break:break-all">${esc(r.value)}</code></td>
+        </tr></tbody>
+      </table>
+      <div class="copy-row">
+        <span style="font-size:11px;color:var(--muted)">Copy the value above and paste it into your DNS provider</span>
+        <button class="copy-btn" id="cpbtn-${i}" onclick="copyDns('${esc(r.value).replace(/'/g,"\\'")}', 'cpbtn-${i}')">Copy Value</button>
+      </div>
+    </div>`).join('');
+}
+
+function renderPolicyFile(v) {
+  if (!v.policy_file) return '';
+  const pf = v.policy_file;
+  return `
+    <div class="d-section">
+      <h3>📄 Policy File</h3>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Host this file at: <code style="color:var(--accent)">${esc(pf.url)}</code></p>
+      <div class="policy-box">
+        <div class="policy-header">
+          File content — mta-sts.txt
+          <button class="copy-btn" id="cpbtn-policy" onclick="copyText(${JSON.stringify(pf.content)}, 'cpbtn-policy')">Copy</button>
+        </div>
+        <div class="policy-content">${esc(pf.content)}</div>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:8px">${esc(pf.note || '')}</p>
+    </div>`;
+}
+
+function renderDelisting(v) {
+  if (!v.delisting_urls || v.delisting_urls.length === 0) return '';
+  return `
+    <div class="d-section">
+      <h3>🔗 Delisting Links</h3>
+      <div class="delink-list">
+        ${v.delisting_urls.map(d => `
+          <div class="delink">
+            <span style="font-weight:600">${esc(d.name)}</span>
+            <a href="${esc(d.url)}" target="_blank" rel="noopener">Request Removal →</a>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function markResolved(i) {
+  if (resolvedSet.has(i)) {
+    resolvedSet.delete(i);
+  } else {
+    resolvedSet.add(i);
+    toast('Marked as fixed! Click Re-scan to verify.', 'success');
+  }
+  renderVulnList();
+  // Re-select to update button
+  if (currentVuln === i) selectVuln(i);
+}
+
+function downloadPdf() {
+  const domain = scanData ? scanData.domain : '';
+  if (!domain) return;
+  const url = `/report/remediation?domain=${encodeURIComponent(domain)}`;
+  window.open(url, '_blank');
+}
+
+// ── Utilities ──────────────────────────────────────────────────────────────────
+function copyDns(value, btnId) {
+  copyText(value, btnId);
+}
+
+function copyText(text, btnId) {
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById(btnId);
+    if (btn) { btn.textContent = 'Copied!'; btn.classList.add('copied'); setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); btn.textContent = btnId.includes('policy') ? 'Copy' : 'Copy Value'; }, 2000); }
+    toast('Copied to clipboard!', 'success');
+  }).catch(() => toast('Copy failed — please copy manually', 'error'));
+}
+
+function esc(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `show ${type}`;
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.className = '', 2500);
+}
+
+// Pre-fill domain from URL param
+const urlDomain = new URLSearchParams(window.location.search).get('domain');
+if (urlDomain) {
+  document.getElementById('entry-domain').value = urlDomain;
+}
+</script>
+</body>
+</html>
